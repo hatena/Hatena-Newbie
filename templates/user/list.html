@@ -1,0 +1,17 @@
+[% WRAPPER '_wrapper.tt' %]
+<div class=row>
+  <div class="user-register">
+    <form action="/user/register" method="POST">
+      <input name="name" />
+      <input type="submit" />
+    </form>
+  </div>
+  <ul>
+    [%- FOR user IN users -%]
+      <li>
+        [% user.name %]
+      </li>
+    [%- END -%]
+  </ul>
+</div>
+[% END # WRAPPER %]

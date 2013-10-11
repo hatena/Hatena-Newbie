@@ -1,0 +1,10 @@
+CREATE TABLE user (
+    `user_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARBINARY(32) NOT NULL,
+
+    `created` TIMESTAMP NOT NULL DEFAULT '0000-00-00 00:00:00',
+
+    PRIMARY KEY (user_id),
+    UNIQUE KEY (name),
+    KEY (created)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
