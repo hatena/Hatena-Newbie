@@ -8,8 +8,6 @@ use Path::Class;
 use lib file(__FILE__)->dir->subdir('../../../../lib')->stringify;
 use lib glob file(__FILE__)->dir->subdir('../../../../modules/*/lib')->stringify;
 
-use Hatena::Newbie::DBI::Factory;
-
 use DateTime;
 use DateTime::Format::MySQL;
 
@@ -28,15 +26,35 @@ use DBIx::RewriteDSN -rules => q<
 
 sub import {
     my $class = shift;
+
+    strict->import;
+    warnings->import;
+    utf8->import;
+
+    set_output();
+
     my $code = q[
         use Test::More;
-        use encoding 'utf8';
-        binmode Test::More->builder->output, ":utf8";
-        binmode Test::More->builder->failure_output, ":utf8";
-        binmode Test::More->builder->todo_output, ":utf8";
     ];
     eval $code;
     die $@ if $@;
+}
+
+sub set_output {
+    # http://blog.64p.org/entry/20081026/1224990236
+    # utf8 hack.
+    require Test::More;
+    binmode Test::More->builder->$_, ":utf8"
+        for qw/output failure_output todo_output/;
+    no warnings 'redefine';
+    my $code = \&Test::Builder::child;
+    *Test::Builder::child = sub {
+        my $builder = $code->(@_);
+        binmode $builder->output,         ":utf8";
+        binmode $builder->failure_output, ":utf8";
+        binmode $builder->todo_output,    ":utf8";
+        return $builder;
+    };
 }
 
 1;

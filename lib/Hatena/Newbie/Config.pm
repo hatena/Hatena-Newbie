@@ -18,9 +18,15 @@ sub root { $Root }
 common {
 };
 
-$ENV{SERVER_PORT} ||= 3000;
+my $server_port = $ENV{SERVER_PORT} || 3000;
+
 config default => {
-    origin => "http://localhost:$ENV{SERVER_PORT}",
+    'server.port'     => $server_port,
+    'origin'          => "http://localhost:${server_port}",
+    'file.log.access' => 'log/access_log',
+    'file.log.error'  => 'log/error_log',
+    'dir.static.root'    => 'static',
+    'dir.static.favicon' => 'static/images',
 };
 
 config production => {
@@ -30,8 +36,8 @@ config local => {
     parent('default'),
     db => {
         hatena_newbie => {
-            user     => 'hatena_newbie',
-            password => 'hatena_newbie',
+            user     => 'nobody',
+            password => 'nobody',
             dsn      => 'dbi:mysql:dbname=hatena_newbie;host=localhost',
         },
     },
@@ -43,8 +49,8 @@ config test => {
 
     db => {
         hatena_newbie => {
-            user     => 'hatena_newbie',
-            password => 'hatena_newbie',
+            user     => 'nobody',
+            password => 'nobody',
             dsn      => 'dbi:mysql:dbname=hatena_newbie_test;host=localhost',
         },
     },

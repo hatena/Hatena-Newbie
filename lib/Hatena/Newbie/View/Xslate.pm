@@ -6,7 +6,7 @@ use utf8;
 
 use Hatena::Newbie::Config;
 
-use Text::Xslate qw(mark_raw html_escape);
+use Text::Xslate ();
 
 our $tx = Text::Xslate->new(
     path      => [ config->root->subdir('templates') ],
@@ -15,11 +15,7 @@ our $tx = Text::Xslate->new(
     syntax    => 'TTerse',
     module    => [ qw(Text::Xslate::Bridge::TT2Like) ],
     function  => {
-        cm => sub { # class method
-            my ($class, $method, @args) = @_;
-            return $class->$method(@args);
-        },
-    }
+    },
 );
 
 sub render_file {

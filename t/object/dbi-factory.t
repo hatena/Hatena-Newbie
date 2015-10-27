@@ -11,23 +11,23 @@ use Test::More;
 
 use Test::Hatena::Newbie;
 
-use Hatena::Newbie::DBI::Factory;
+use Hatena::Newbie::Context;
 
 sub _use : Test(1) {
-    use_ok 'Hatena::Newbie::DBI::Factory';
+    use_ok 'Hatena::Newbie::Context';
 }
 
-sub _dbconfig : Test(3) {
-    my $dbfactory = Hatena::Newbie::DBI::Factory->new;
-    my $db_config = $dbfactory->dbconfig('hatena_newbie');
-    is $db_config->{user}, 'hatena_newbie';
-    is $db_config->{password}, 'hatena_newbie';
+sub _db_config : Test(3) {
+    my $factory = Hatena::Newbie::Context->new;
+    my $db_config = $factory->db_config('hatena_newbie');
+    is $db_config->{user}, 'nobody';
+    is $db_config->{password}, 'nobody';
     is $db_config->{dsn}, 'dbi:mysql:dbname=hatena_newbie_test;host=localhost';
 }
 
 sub _dbh : Test(1) {
-    my $dbfactory = Hatena::Newbie::DBI::Factory->new;
-    my $dbh = $dbfactory->dbh('hatena_newbie');
+    my $factory = Hatena::Newbie::Context->new;
+    my $dbh = $factory->dbh;
     ok $dbh;
 
 }

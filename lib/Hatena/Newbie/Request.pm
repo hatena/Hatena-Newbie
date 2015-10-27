@@ -14,15 +14,18 @@ sub parameters {
     $self->env->{'plack.request.merged'} ||= do {
         my $query = $self->query_parameters;
         my $body  = $self->body_parameters;
-        my $path  = $self->route_parameters;
+        my $path  = $self->path_parameters;
         Hash::MultiValue->new($path->flatten, $query->flatten, $body->flatten);
     };
 }
 
-sub route_parameters {
-    my ($self) = @_;
-    return $self->env->{'hatena.newbie.route.parameters'} ||=
-        Hash::MultiValue->new(%{ $self->env->{'hatena.newbie.route'} });
+sub path_parameters {
+    my $self = shift;
+    if (@_ > 1) {
+        $self->{_path_parameters} = Hash::MultiValue->new(@_);
+        delete $self->env->{'plack.request.merged'}; # remove instance cache
+    }
+    return $self->{_path_parameters} ||= Hash::MultiValue->new;
 }
 
 sub is_xhr {

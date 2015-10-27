@@ -1,0 +1,75 @@
+#!/bin/sh
+
+ROOT=$(cd $(dirname "$0")/..; pwd)
+LOCAL=local/devel
+PERL="perl -I$LOCAL/lib/perl5"
+
+install_module () {
+    module="$1"
+    $PERL -M$module -e '' >/dev/null 2>&1 || {
+        echo cpanm -L "$LOCAL" "$module"
+        cpanm -L "$LOCAL" "$module"
+    }
+}
+
+rewrite_file() {
+    file="$1"
+    [ -r "$file" ] || return
+    pattern="$2"
+    newfile=$(mktemp /tmp/newbie.XXXXXX)
+    cp -a "$file" "$newfile"
+    cat "$file" | perl -pe "$pattern" > "$newfile"
+    mv "$newfile" "$file"
+}
+
+cd "$ROOT"
+install_module App::PRT
+
+prt="$PERL $LOCAL/bin/prt"
+
+old_namespace='Hatena'::'Newbie'
+namespace="$1"
+[ -n "$1" ] || {
+    echo 'Usage: generate Project::Name'
+    exit
+}
+
+old_project="$(echo "$old_namespace" | perl -pe 's/::/-/g')"
+project="$(echo "$namespace" | perl -pe 's/::/-/g')"
+old_env="$(echo "$old_namespace" | perl -pe '$_ = uc; s/::/_/g')_ENV"
+env="$(echo "$namespace" | perl -pe '$_ = uc; s/::/_/g')_ENV"
+old_db="$(echo "$old_namespace" | perl -pe '$_ = lc; s/::/_/g')"
+db="$(echo "$namespace" | perl -pe '$_ = lc; s/::/_/g')"
+
+lib="lib/$(echo "$namespace" | perl -pe 's|::|/|g')"
+tlib="t/lib/Test/$(echo "$namespace" | perl -pe 's|::|/|g')"
+
+$prt rename_namespace "$old_namespace" "$namespace"
+$prt rename_namespace "Test::$old_namespace" "Test::$namespace"
+
+for f in 'README.md' 'script/appup.pl' \
+    't/engine/index.t' \
+    't/object/config.t' 't/object/dbi-factory.t' 't/object/util.t'; do
+    rewrite_file "$f" "s/$old_namespace/$namespace/g"
+done
+
+for f in 'script/appup.pl' "$lib/Config.pm" "$tlib.pm"; do
+    rewrite_file "$f" "s/$old_env/$env/g"
+done
+
+for f in 'templates/index.html' 't/engine/index.t'; do
+    rewrite_file "$f" "s/$old_project/$project/g"
+done
+
+for f in 'script/setup_db.sh' \
+    "$lib/Config.pm" "$lib/Context.pm" \
+    't/object/dbi-factory.t'; do
+    rewrite_file "$f" "s/$old_db/$db/g"
+done
+
+rewrite_file "README.md" '$_ .= join "", <>; s|\n\(newbie\).*?\n||s'
+
+git add -u .
+git add lib
+git add t
+git rm -f "$0" > /dev/null

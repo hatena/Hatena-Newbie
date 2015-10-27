@@ -4,13 +4,16 @@ use strict;
 use warnings;
 use utf8;
 
-use Carp ();
-use Sub::Name;
-
 use DateTime;
 use DateTime::Format::MySQL;
 
 use Hatena::Newbie::Config;
+
+sub now () {
+    my $now = DateTime->now(time_zone => config->param('db_timezone'));
+    $now->set_formatter( DateTime::Format::MySQL->new );
+    $now;
+}
 
 sub datetime_from_db ($) {
     my $dt = DateTime::Format::MySQL->parse_datetime( shift );

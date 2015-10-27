@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use utf8;
 
-use Router::Simple::Declare;
+use Hatena::Newbie::Config::Route::Declare;
 
 sub make_router {
     return router {
@@ -12,14 +12,6 @@ sub make_router {
             engine => 'Index',
             action => 'default',
         };
-        connect '/user/list' => {
-            engine => 'User',
-            action => 'list',
-        };
-        connect '/user/register' => {
-            engine => 'User',
-            action => 'register',
-        } => { method => 'POST' };
     };
 }
 

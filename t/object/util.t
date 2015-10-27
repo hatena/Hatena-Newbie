@@ -1,4 +1,4 @@
-package t::Hatena::Newbie::DBI::Factory;
+package t::Hatena::Newbie::Util;
 
 use strict;
 use warnings;

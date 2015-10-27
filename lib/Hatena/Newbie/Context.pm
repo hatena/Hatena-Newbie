@@ -4,22 +4,25 @@ use strict;
 use warnings;
 use utf8;
 
-use Hatena::Newbie::Request;
-use Hatena::Newbie::Config;
-
 use Carp ();
 use Encode ();
+
+use HTTP::Status;
+use HTTP::Throwable::Factory ();
+
 use URI;
 use URI::QueryParam;
 
+use DBIx::Sunny;
+
 use Class::Accessor::Lite::Lazy (
-    rw_lazy => [ qw(request response route stash db) ],
+    rw_lazy => [ qw(request response stash) ],
     rw      => [ qw(env) ],
     new     => 1,
 );
 
-use Hatena::Newbie::Error;
-use Hatena::Newbie::DBI::Factory;
+use Hatena::Newbie::Request;
+use Hatena::Newbie::Config;
 
 ### Properties
 
@@ -38,11 +41,6 @@ sub _build_request {
 sub _build_response {
     my $self = shift;
     return $self->request->new_response(200);
-};
-
-sub _build_route {
-    my $self = shift;
-    return Hatena::Newbie::Config->router->match($self->env);
 };
 
 sub _build_stash { +{} };
@@ -90,16 +88,19 @@ sub plain_text {
     $self->response->content(join "\n", @lines);
 }
 
-sub redirect {
-    my ($self, $url) = @_;
-
-    $self->response->code(302);
-    $self->response->header(Location => $url);
+sub throw {
+    my ($self, $code, $message, %opts) = @_;
+    HTTP::Throwable::Factory->throw({
+        status_code => $code,
+        reason      => HTTP::Status::status_message($code),
+        message     => $message // '',
+        %opts,
+    });
 }
 
-sub error {
-    my ($self, $code, $message, %opts) = @_;
-    Hatena::Newbie::Error->throw($code, $message, %opts);
+sub throw_redirect {
+    my ($self, $url) = @_;
+    HTTP::Throwable::Factory->throw(Found => { location => $url });
 }
 
 sub uri_for {
@@ -110,14 +111,28 @@ sub uri_for {
 }
 
 ### DB Access
-sub _build_db {
-    my ($self) = @_;
-    return Hatena::Newbie::DBI::Factory->new;
+
+sub db_config {
+    my ($self, $name) = @_;
+    my $db_config = config->param('db')
+        // Carp::croak 'A DB setting is required';
+    return $db_config->{$name}
+        // Carp::croak qq(No DB config for DB '$name' exists);
 }
 
 sub dbh {
-    my ($self, $name) = @_;
-    return $self->db->dbh($name);
+    my ($self) = @_;
+
+    my $name = 'hatena_newbie';
+    my $db_config = $self->db_config($name);
+    my $user = $db_config->{user}
+        or Carp::croak qq(No user name for DB '$name' exists);
+    my $password = $db_config->{password}
+        or Carp::croak qq(No password for DB '$name' exists);
+    my $dsn = $db_config->{dsn}
+        or Carp::croak qq(No dsn for DB '$name' exists);
+
+    return DBIx::Sunny->connect($dsn, $user, $password);
 }
 
 1;

@@ -9,67 +9,65 @@ use Hatena::Newbie::Config;
 
 use Path::Class qw(file);
 use Plack::Builder;
-use Plack::Middleware::AccessLog::Timed;
-use Plack::Middleware::Head;
-use Plack::Middleware::Runtime;
-use Plack::Middleware::Scope::Container;
-use Plack::Middleware::Static;
 
 my $app = Hatena::Newbie->as_psgi;
 my $root = config->root;
 
 builder {
-    # enable 'ReverseProxy';
     enable 'Runtime';
     enable 'Head';
 
-    if (config->env eq 'production') {
-        my $access_log = Path::Class::file($ENV{ACCESS_LOG} || "$root/log/access_log");
-        my $error_log  = Path::Class::file($ENV{ERROR_LOG}  || "$root/log/error_log");
+    # static file
 
-        $_->dir->mkpath for $access_log, $error_log;
+    enable 'Static', (
+        path => qr<^/(?:images|js|css)/>,
+        root => config->param('dir.static.root'),
+    );
+    enable 'Static', (
+        path => qr<^/favicon\.ico$>,
+        root => config->param('dir.static.favicon'),
+    );
 
-        my $fh_access = $access_log->open('>>')
-            or die "Cannot open >> $access_log: $!";
-        my $fh_error  = $error_log->open('>>')
-            or die "Cannot open >> $error_log: $!";
+    # access and error logs
 
-        $_->autoflush(1) for $fh_access, $fh_error;
+    my $log = +{ map {
+        my $file = file($ENV{uc "${_}_log"} || config->param("file.log.${_}"));
+        $file->dir->mkpath;
+        my $fh = $file->open('>>') or die "Cannot open >> $file: $!";
+        $fh->autoflush(1);
+        $_ => $fh;
+    } qw(access error) };
 
-        enable 'AccessLog::Timed', (
-            logger => sub {
-                print $fh_access @_;
-            },
-            format => join("\t",
-                'time:%t',
-                'host:%h',
-                'domain:%V',
-                'req:%r',
-                'status:%>s',
-                'size:%b',
-                'referer:%{Referer}i',
-                'ua:%{User-Agent}i',
-                'taken:%D',
-                'xgid:%{X-Generated-Id}o',
-                'xdispatch:%{X-Dispatch}o',
-                'xrev:%{X-Revision}o',
-            )
-        );
-
-        enable sub {
-            my $app = shift;
-            sub {
-                my $env = shift;
-                local $Hatena::Newbie::Logger::HANDLE = $fh_error;
-                return $app->($env);
-            };
+    enable sub {
+        my $app = shift;
+        sub {
+            my $env = shift;
+            $env->{'psgi.errors'} = $log->{error};
+            return $app->($env);
         };
-    }
+    };
 
-    enable 'Static', path => qr<^/(?:images|js|css)/>, root => './static/';
-    enable 'Static', path => qr<^/favicon\.ico$>,      root => './static/images';
+    enable 'AccessLog::Timed', (
+        logger => sub {
+            my $fh = $log->{access};
+            print $fh @_;
+        },
+        format => join(
+            "\t",
+            'time:%t',
+            'host:%h',
+            'domain:%V',
+            'req:%r',
+            'status:%>s',
+            'size:%b',
+            'referer:%{Referer}i',
+            'ua:%{User-Agent}i',
+            'taken:%D',
+            'xdispatch:%{X-Dispatch}o',
+        )
+    );
 
-    enable 'Scope::Container';
+    enable 'HTTPExceptions';
 
     $app;
 };

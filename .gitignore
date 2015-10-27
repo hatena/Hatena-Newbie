@@ -25,6 +25,7 @@ covered
 *_flymake.html
 tmp
 MYMETA.*
-.carton/
-local/
 /.dimconfig
+.carton/
+/local/
+/log/
